@@ -1,0 +1,6 @@
+.env
+.venv
+.spotify_cache
+oauth.json
+.idea/*
+
