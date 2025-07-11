@@ -3,4 +3,6 @@
 .spotify_cache
 oauth.json
 .idea/*
+__pycache__/
+*.pyc
 
