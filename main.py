@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 
 
-from clients.spotify import SpotifyClient
-from clients.youtube_music import YoutubeMusicClient
+from clients.spotify.spotify import SpotifyClient
+from clients.youtube_music.youtube_music import YouTubeMusicClient
 from config.config import Config
 from services.music_sync_service import MusicSyncService
 
@@ -22,7 +22,7 @@ def main():
         redirect_uri=Config.SPOTIPY_REDIRECT_URI
     )
 
-    youtube_music_client = YoutubeMusicClient(
+    youtube_music_client = YouTubeMusicClient(
         client_id=Config.YOUTUBE_CLIENT_ID,
         client_secret=Config.YOUTUBE_CLIENT_SECRET
     )

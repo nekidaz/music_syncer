@@ -1,4 +1,4 @@
-from .spotify import SpotifyClient
-from .youtube_music import YoutubeMusicClient
+from clients.spotify.spotify import SpotifyClient
+from clients.youtube_music.youtube_music import YouTubeMusicClient
 
-__all__ = ["SpotifyClient", "YoutubeMusicClient"]
+__all__ = ["SpotifyClient", "YouTubeMusicClient"]

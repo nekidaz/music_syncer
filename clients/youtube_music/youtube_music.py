@@ -1,15 +1,17 @@
-from ytmusicapi import YTMusic, OAuthCredentials
-from models.track import Track
 import logging
+from ytmusicapi import YTMusic, OAuthCredentials
 
-class YoutubeMusicClient:
+from clients.music_client import MusicClient
+from models.track import Track, Tracks
+from mappers import YTMusicTrackMapper
 
+class YouTubeMusicClient(MusicClient):
     def __init__(self, client_id: str, client_secret: str):
         self.logger = logging.getLogger(__name__)
         self.ytmusic = YTMusic('oauth.json', oauth_credentials=OAuthCredentials(
             client_id=client_id,
-            client_secret=client_secret
-        ))
+            client_secret=client_secret,
+        ), language="ru", location="KZ" )
 
     def create_playlist(self, name: str, description: str = None) -> str:
         try:
@@ -18,53 +20,39 @@ class YoutubeMusicClient:
             self.logger.error(f"Ошибка при создании плейлиста: {e}")
             raise
 
-    def get_liked_tracks(self, limit: int = 50):
-        try:
-            liked_tracks = []
-            liked_songs = self.ytmusic.get_liked_songs(limit=limit)
-            for song in liked_songs['tracks']:
-                liked_tracks.append(Track(
-                    name=song['title'],
-                    artist=song['artists'][0]['name'],
-                    album=song['album']['name'] if song.get('album') else ""
-                ))
-            return liked_tracks
-        except Exception as e:
-            self.logger.error(f"Ошибка при получении любимых треков: {e}")
-            raise
-
     def get_or_create_playlist(self, name: str) -> str:
         try:
             playlists = self.ytmusic.get_library_playlists()
             for pl in playlists:
                 if pl['title'].lower() == name.lower():
                     return pl['playlistId']
-            # Если не найдено — создаём
             return self.create_playlist(name)
         except Exception as e:
             self.logger.error(f"Ошибка при поиске/создании плейлиста '{name}': {e}")
             raise
 
-    def get_playlist_tracks(self, playlist_id: str) -> list[Track]:
+    def get_playlist_tracks(self, playlist_id: str) -> Tracks:
         try:
             playlist = self.ytmusic.get_playlist(playlist_id, limit=1000)
-            tracks = []
+            tracks = Tracks()
             for item in playlist['tracks']:
-                tracks.append(Track(
-                    name=item['title'],
-                    artist=item['artists'][0]['name'],
-                    album=item['album']['name'] if item.get('album') else ""
-                ))
+                tracks.add(YTMusicTrackMapper.from_raw(item))
             return tracks
         except Exception as e:
             self.logger.error(f"Ошибка при получении треков из плейлиста: {e}")
             raise
 
-    def track_exists_in_list(self, track: Track, track_list: list[Track]) -> bool:
-        for t in track_list:
-            if t.name.lower() == track.name.lower() and t.artist.lower() == track.artist.lower():
-                return True
-        return False
+    def get_all_liked_tracks(self) -> Tracks:
+        try:
+            response = self.ytmusic.get_liked_songs(limit=100_000)
+            liked_tracks = Tracks()
+            for t in response.get("tracks", []):
+                liked_tracks.add(YTMusicTrackMapper.from_raw(t))
+            return liked_tracks
+        except Exception as e:
+            self.logger.error(f"Ошибка при получении лайкнутых треков: {e}")
+            return Tracks()
+
 
     def search_and_add_to_playlist(self, track: Track, playlist_id: str):
         try:
@@ -89,7 +77,7 @@ class YoutubeMusicClient:
                 set_video_id = item.get("setVideoId")
 
                 if not set_video_id:
-                    continue  # Без ID не удалим
+                    continue
 
                 if title == track.name.lower() and artist == track.artist.lower():
                     self.ytmusic.remove_playlist_items(playlist_id, [{
